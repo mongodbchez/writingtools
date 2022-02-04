@@ -48,8 +48,7 @@ def cherryPick(commitHash):
       conflict = True
       print("MERGE CONFLICT FOUND. STOPPING CHERRY-PICK.")
       process = run('cherry-pick', '--abort')
-      return conflict
-    else: return conflict
+    return conflict
 
 def commitAmend(subtaskNumber, parentTicketNumber, versionNumber):
     #replaces cherry picked commit message (this also creates a new commit with the same content as the cherry picked commit)
