@@ -33,13 +33,14 @@ def getCommitHash(parentTicketNumber):
     print(out)
     return out
 
-def cherryPick(commitHash, conflict):
+def cherryPick(commitHash):
     #cherry picks relevant commit via it's hash
     #commitHash = getCommitHash(parentTicketNumber)
     #test = "21ea1005690821a134d796ffddd897fe2e91cf86"
     #if commitHash != test:
     #    print("WRONG: "+commitHash)
     #    commitHash = test
+    conflict = False
     process = run("cherry-pick", commitHash)
     print("BACKPORT BOT IS CHERRY PICKING "+ commitHash)
     print(process.stdout)
@@ -119,7 +120,7 @@ def main(argv):
         print()
         coNewBranch(subtaskNumber, versionNumber)
         rebase2version(versionNumber)
-        conflict = cherryPick(commitHash, conflict)
+        conflict = cherryPick(commitHash)
         if conflict == True:
           print("\n********")
           print("MERGE CONFLICT. PLEASE PERFORM THIS BACKPORT MANUALLY AND RESOLVE ANY MERGE CONFLICTS.")
