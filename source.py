@@ -106,6 +106,7 @@ def main(argv):
     print("YOUR PARENT TICKET IS DOCSP-"+parentTicketNumber)
     run('checkout', 'master')
     fetchAll()
+    run('pull', '--rebase', 'upstream', 'master')
     commitHash = getCommitHash(parentTicketNumber)
     #for every version listed, perform the backporting process
     for (versionNumber, subtaskNumber) in zip(versions, subtaskNumbers):
