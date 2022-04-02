@@ -26,22 +26,29 @@ def fetchAll():
     print(process.stdout)
 
 def getCommitHash(parentTicketNumber):
-    #returns parent ticket commit hash by rev-parse of parent ticket branch
-    result = subprocess.run(['git', 'rev-parse', 'DOCSP-'+parentTicketNumber], capture_output=True, text=True)
-    print("REV PARSE")
+    #returns parent ticket commit hash by rev-list of HEAD
+    result = run('rev-list', 'HEAD', '--grep=DOCSP-'+parentTicketNumber)
+    print("REV LIST")
     out = result.stdout.strip()
+    print(out)
     return out
 
-def cherryPick(parentTicketNumber):
+def cherryPick(commitHash):
     #cherry picks relevant commit via it's hash
-    commitHash = getCommitHash(parentTicketNumber)
+    #commitHash = getCommitHash(parentTicketNumber)
     #test = "21ea1005690821a134d796ffddd897fe2e91cf86"
     #if commitHash != test:
     #    print("WRONG: "+commitHash)
     #    commitHash = test
+    conflict = False
     process = run("cherry-pick", commitHash)
     print("BACKPORT BOT IS CHERRY PICKING "+ commitHash)
     print(process.stdout)
+    if "CONFLICT" in process.stdout:
+      conflict = True
+      print("MERGE CONFLICT FOUND. STOPPING CHERRY-PICK.")
+      process = run('cherry-pick', '--abort')
+    return conflict
 
 def commitAmend(subtaskNumber, parentTicketNumber, versionNumber):
     #replaces cherry picked commit message (this also creates a new commit with the same content as the cherry picked commit)
@@ -66,6 +73,7 @@ def main(argv):
     subtaskNumbers = ''
     parentTicketNumber = ''
     versions = ''
+    commitHash = ''
 
     print("GREETINGS, I AM BACKPORT BOT. I WILL ASSIST YOU IN ALL YOUR BACKPORT NEEDS TODAY")
 
@@ -83,7 +91,7 @@ def main(argv):
             sys.exit()
         #parent Jira subtask number used to create backport branch
         elif opt in ("-s", "--subtaskNumber"):
-            subtaskNumbers = args.split(',')
+            subtaskNumbers = arg.split(',')
         #parent Jira ticket number
         elif opt in ("-p", "--parentTicketNumber"):
             parentTicketNumber = arg
@@ -96,8 +104,13 @@ def main(argv):
         sys.exit(2)
 
     print("YOUR PARENT TICKET IS DOCSP-"+parentTicketNumber)
+    run('checkout', 'master')
+    fetchAll()
+    run('pull', '--rebase', 'upstream', 'master')
+    commitHash = getCommitHash(parentTicketNumber)
     #for every version listed, perform the backporting process
     for (versionNumber, subtaskNumber) in zip(versions, subtaskNumbers):
+        conflict = False
         print("YOUR BACKPORT SUBTASK TICKET IS DOCSP-"+subtaskNumber)
         print("YOU ARE BACKPORTING TO VERSION "+versionNumber)
         print("...")
@@ -107,14 +120,16 @@ def main(argv):
         print()
         coNewBranch(subtaskNumber, versionNumber)
         rebase2version(versionNumber)
-        fetchAll()
-        cherryPick(parentTicketNumber)
-        commitAmend(subtaskNumber, parentTicketNumber, versionNumber)
-        pushOrigin(subtaskNumber)
-        print("BACKPORT OF DOCSP-"+parentTicketNumber+" TO " +versionNumber + " HAS BEEN PUSHED TO BRANCH DOCSP-"+subtaskNumber)
+        conflict = cherryPick(commitHash)
+        if conflict == True:
+          print("\n********")
+          print("MERGE CONFLICT. PLEASE PERFORM THIS BACKPORT MANUALLY AND RESOLVE ANY MERGE CONFLICTS.")
+          print("********\n")
+        else:
+          commitAmend(subtaskNumber, parentTicketNumber, versionNumber)
+          pushOrigin(subtaskNumber)
+          print("BACKPORT OF DOCSP-"+parentTicketNumber+" TO " +versionNumber + " HAS BEEN PUSHED TO BRANCH DOCSP-"+subtaskNumber)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
 
-
-    
